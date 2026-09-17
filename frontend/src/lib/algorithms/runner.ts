@@ -37,7 +37,7 @@ export function runPipeline(
   const routing = computeRoutes(nodes, edges);
 
   // Step 3: CAPACITY — compute max-flow through the network
-  const capacity = computeMaxFlow(nodes, edges);
+  const capacity = computeMaxFlow(nodes, edges, demands);
 
   // Step 4: PACK — allocate items to vehicles via knapsack
   const packing = computePacking(ranking.rankedDemands, items, vehicles);

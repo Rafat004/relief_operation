@@ -2,7 +2,7 @@
 // with min-cut extraction via residual graph reachability scan
 // Time: O(VE²), Space: O(V+E)
 
-import { Node, Edge } from "../types";
+import { Node, Edge, Demand } from "../types";
 
 export interface CapacityResult {
   maxFlow: number;
@@ -49,7 +49,7 @@ function bfs(
  * Also performs min-cut extraction by finding reachable nodes from the source
  * in the final residual graph and returning edges crossing that partition.
  */
-export function computeMaxFlow(nodes: Node[], edges: Edge[]): CapacityResult {
+export function computeMaxFlow(nodes: Node[], edges: Edge[], demands: Demand[]): CapacityResult {
   const start = performance.now();
 
   // Build residual graph with super-source and super-sink
@@ -66,7 +66,8 @@ export function computeMaxFlow(nodes: Node[], edges: Edge[]): CapacityResult {
 
   // Connect super-source to all depots with large capacity
   const depots = nodes.filter(n => n.kind === "depot");
-  const villages = nodes.filter(n => n.kind === "village");
+  const villagesWithDemands = new Set(demands.map(d => d.node_id));
+  const villages = nodes.filter(n => n.kind === "village" && villagesWithDemands.has(n.id));
 
   for (const depot of depots) {
     residual.get(SUPER_SOURCE)!.set(depot.id, 100000);
