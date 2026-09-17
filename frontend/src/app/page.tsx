@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { MOCK_NODES, MOCK_EDGES, MOCK_DEMANDS, MOCK_ITEMS, MOCK_VEHICLES } from "@/lib/mock-data";
 import { runPipeline, PipelineResult } from "@/lib/algorithms/runner";
 import { Node, Edge, Item, Vehicle, Demand } from "@/lib/types";
 
@@ -14,6 +14,7 @@ import HistoryView from "@/components/views/HistoryView";
 type ViewState = "map" | "demands" | "plan" | "history";
 
 export default function Home() {
+  const router = useRouter();
   const [activeView, setActiveView] = useState<ViewState>("map");
 
   // Data state — initialized empty, populated from Supabase
@@ -26,26 +27,31 @@ export default function Home() {
   const [activePlan, setActivePlan] = useState<PipelineResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<"supabase" | "mock">("supabase");
+  const [error, setError] = useState<string | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // ──────────────────────────────────────────────
-  // Initial data fetch from Supabase (with mock fallback)
+  // Initial data fetch from Supabase
   // ──────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
     async function fetchData() {
+      // Auth Check
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        if (!cancelled) {
+          router.push("/login");
+        }
+        return; // Don't fetch data if not authenticated
+      }
+
       if (!isSupabaseConfigured) {
-        console.info("Supabase not configured, using mock data.");
-        setNodes(MOCK_NODES);
-        setEdges(MOCK_EDGES);
-        setItems(MOCK_ITEMS);
-        setVehicles(MOCK_VEHICLES);
-        setDemands(MOCK_DEMANDS);
-        setDataSource("mock");
-        setIsLoading(false);
+        if (!cancelled) {
+          setError("Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local");
+          setIsLoading(false);
+        }
         return;
       }
 
@@ -56,35 +62,22 @@ export default function Home() {
           supabase.from("items").select("*"),
           supabase.from("vehicles").select("*"),
           supabase.from("demands").select("*").order("created_at", { ascending: true }),
-          supabase.from("plans").select("*").order("created_at", { ascending: false }),
+          supabase.from("plans").select("*").neq("id", "plan-1789638658192").order("created_at", { ascending: false }),
         ]);
 
         if (cancelled) return;
 
-        // Check if any table returned an error (likely means Supabase is not configured)
         const hasError = [nodesRes, edgesRes, itemsRes, vehiclesRes, demandsRes].some(r => r.error);
 
         if (hasError || !nodesRes.data?.length) {
-          // Fall back to mock data
-          console.warn("Supabase unavailable or empty, using mock data. Errors:", {
-            nodes: nodesRes.error?.message,
-            edges: edgesRes.error?.message,
-          });
-          setNodes(MOCK_NODES);
-          setEdges(MOCK_EDGES);
-          setItems(MOCK_ITEMS);
-          setVehicles(MOCK_VEHICLES);
-          setDemands(MOCK_DEMANDS);
-          setDataSource("mock");
+          setError("Failed to fetch data from Supabase. Ensure your database is initialized.");
         } else {
           setNodes(nodesRes.data as Node[]);
           setEdges(edgesRes.data as Edge[]);
           setItems(itemsRes.data as Item[]);
           setVehicles(vehiclesRes.data as Vehicle[]);
           setDemands(demandsRes.data as Demand[]);
-          setDataSource("supabase");
 
-          // Load plans from Supabase
           if (plansRes.data && plansRes.data.length > 0) {
             const loadedPlans: PipelineResult[] = plansRes.data.map((p: { id: string; created_at: string; result: PipelineResult }) => ({
               ...p.result,
@@ -92,17 +85,11 @@ export default function Home() {
               createdAt: p.created_at,
             }));
             setHistory(loadedPlans);
-            setActivePlan(loadedPlans[0]); // Latest plan
+            setActivePlan(loadedPlans[0]);
           }
         }
       } catch (err) {
-        console.warn("Supabase connection failed, using mock data:", err);
-        setNodes(MOCK_NODES);
-        setEdges(MOCK_EDGES);
-        setItems(MOCK_ITEMS);
-        setVehicles(MOCK_VEHICLES);
-        setDemands(MOCK_DEMANDS);
-        setDataSource("mock");
+        if (!cancelled) setError("Supabase connection failed.");
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -116,7 +103,7 @@ export default function Home() {
   // Real-time subscriptions (only when using Supabase)
   // ──────────────────────────────────────────────
   useEffect(() => {
-    if (dataSource !== "supabase" || isLoading) return;
+    if (error || isLoading) return;
 
     const channel = supabase
       .channel("realtime-relief")
@@ -144,6 +131,14 @@ export default function Home() {
       )
       .on(
         "postgres_changes",
+        { event: "DELETE", schema: "public", table: "demands" },
+        (payload) => {
+          const deletedDemandId = payload.old.id;
+          setDemands((prev) => prev.filter((d) => d.id !== deletedDemandId));
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "plans" },
         (payload) => {
           const newPlan = payload.new as { id: string; created_at: string; result: PipelineResult };
@@ -165,11 +160,16 @@ export default function Home() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [dataSource, isLoading]);
+  }, [error, isLoading]);
 
   // ──────────────────────────────────────────────
   // Event Handlers
   // ──────────────────────────────────────────────
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
 
   const handleGeneratePlan = useCallback(async () => {
     setIsGenerating(true);
@@ -178,17 +178,15 @@ export default function Home() {
     requestAnimationFrame(async () => {
       const result = runPipeline(nodes, edges, demands, items, vehicles);
 
-      // Save to Supabase if connected
-      if (dataSource === "supabase") {
-        try {
-          await supabase.from("plans").insert({
-            id: result.id,
-            created_at: result.createdAt,
-            result: result,
-          });
-        } catch (err) {
-          console.warn("Failed to save plan to Supabase:", err);
-        }
+      const { error } = await supabase.from("plans").insert({
+        id: result.id,
+        created_at: result.createdAt,
+        result: result,
+      });
+      
+      if (error) {
+        console.error("Failed to save plan to Supabase:", error);
+        alert("Failed to save plan to database: " + error.message);
       }
 
       setHistory((prev) => {
@@ -199,7 +197,7 @@ export default function Home() {
       setActiveView("plan");
       setIsGenerating(false);
     });
-  }, [nodes, edges, demands, items, vehicles, dataSource]);
+  }, [nodes, edges, demands, items, vehicles]);
 
   const handleViewPlanFromHistory = useCallback((plan: PipelineResult) => {
     setActivePlan(plan);
@@ -210,21 +208,35 @@ export default function Home() {
     // Optimistic update
     setDemands((prev) => [...prev, demand]);
 
-    if (dataSource === "supabase") {
-      const { error } = await supabase.from("demands").insert({
-        id: demand.id,
-        node_id: demand.node_id,
-        item_id: demand.item_id,
-        qty_needed: demand.qty_needed,
-        urgency_score: demand.urgency_score,
-      });
-      if (error) {
-        console.error("Failed to insert demand:", error);
-        // Rollback on error
-        setDemands((prev) => prev.filter((d) => d.id !== demand.id));
-      }
+    const { error } = await supabase.from("demands").insert({
+      id: demand.id,
+      node_id: demand.node_id,
+      item_id: demand.item_id,
+      qty_needed: demand.qty_needed,
+      urgency_score: demand.urgency_score,
+    });
+    if (error) {
+      console.error("Failed to insert demand:", error);
+      // Rollback on error
+      setDemands((prev) => prev.filter((d) => d.id !== demand.id));
     }
-  }, [dataSource]);
+  }, []);
+
+  const handleDeleteDemand = useCallback(async (demandId: string) => {
+    // Find the demand to potentially rollback
+    const demandToDelete = demands.find((d) => d.id === demandId);
+    if (!demandToDelete) return;
+
+    // Optimistic update
+    setDemands((prev) => prev.filter((d) => d.id !== demandId));
+
+    const { error } = await supabase.from("demands").delete().eq("id", demandId);
+    if (error) {
+      console.error("Failed to delete demand:", error);
+      // Rollback on error
+      setDemands((prev) => [...prev, demandToDelete]);
+    }
+  }, [demands]);
 
   const handleToggleEdge = useCallback(async (edgeId: string) => {
     // Optimistic update
@@ -234,26 +246,24 @@ export default function Home() {
       )
     );
 
-    if (dataSource === "supabase") {
-      const edge = edges.find((e) => e.id === edgeId);
-      if (!edge) return;
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge) return;
 
-      const { error } = await supabase
-        .from("edges")
-        .update({ passable: !edge.passable })
-        .eq("id", edgeId);
+    const { error: updateError } = await supabase
+      .from("edges")
+      .update({ passable: !edge.passable })
+      .eq("id", edgeId);
 
-      if (error) {
-        console.error("Failed to toggle edge:", error);
-        // Rollback
-        setEdges((prev) =>
-          prev.map((e) =>
-            e.id === edgeId ? { ...e, passable: !e.passable } : e
-          )
-        );
-      }
+    if (updateError) {
+      console.error("Failed to toggle edge:", updateError);
+      // Rollback
+      setEdges((prev) =>
+        prev.map((e) =>
+          e.id === edgeId ? { ...e, passable: !e.passable } : e
+        )
+      );
     }
-  }, [dataSource, edges]);
+  }, [edges]);
 
   const navItems: { key: ViewState; label: string }[] = [
     { key: "map", label: "Map" },
@@ -265,6 +275,15 @@ export default function Home() {
   // ──────────────────────────────────────────────
   // Loading State
   // ──────────────────────────────────────────────
+  if (error) {
+    return (
+      <main className="w-full h-screen flex flex-col items-center justify-center bg-surface-container-lowest gap-space-md">
+        <div className="font-headline-md text-error font-bold">Error</div>
+        <div className="text-on-surface-variant max-w-lg text-center">{error}</div>
+      </main>
+    );
+  }
+
   if (isLoading) {
     return (
       <main className="w-full h-screen flex items-center justify-center bg-surface-container-lowest">
@@ -311,11 +330,18 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-space-md">
             <div className="flex items-center gap-space-xs px-space-sm py-space-xs bg-surface-container border border-surface-container-highest rounded-lg">
-              <span className={`w-1.5 h-1.5 rounded-full ${dataSource === "supabase" ? "bg-tertiary" : "bg-primary animate-pulse"}`}></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
               <span className="font-mono-metric-sm text-mono-metric-sm text-on-surface-variant uppercase">
-                {isGenerating ? 'Computing...' : dataSource === "supabase" ? 'Realtime: Connected' : 'Mode: Local'}
+                {isGenerating ? 'Computing...' : 'Realtime: Connected'}
               </span>
             </div>
+            <button
+              onClick={handleSignOut}
+              className="h-8 px-space-md bg-surface-container-highest hover:bg-error hover:text-on-error text-on-surface-variant font-label-lg text-label-lg rounded-md flex items-center justify-center transition-colors select-none"
+              type="button"
+            >
+              Sign Out
+            </button>
             <button
               onClick={handleGeneratePlan}
               disabled={isGenerating}
@@ -343,6 +369,7 @@ export default function Home() {
             nodes={nodes}
             items={items}
             onAddDemand={handleAddDemand}
+            onDeleteDemand={handleDeleteDemand}
           />
         )}
         {activeView === "plan" && (

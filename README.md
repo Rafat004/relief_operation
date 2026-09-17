@@ -4,9 +4,10 @@ ReliefRoute is a disaster relief routing and logistics application designed to o
 
 ## Features
 
-- **Real-time Synchronization:** Built with Supabase, allowing multiple operators to monitor network states, toggle road passability, and queue demands in real-time.
+- **Authentication & Security:** Beautiful, custom "Umbrella" login screen integrating Supabase Auth to secure the dashboard and strictly govern database access.
+- **Real-time Synchronization:** Built with Supabase, allowing multiple authenticated operators to monitor network states, toggle road passability, and manage demands in real-time.
 - **Interactive Topographic Map:** Visualizes depots, villages, and road networks. Click on any road segment to toggle its passable status (e.g., due to floods or landslides).
-- **Demand Queueing:** Log supply requests for specific villages with calculated urgency scores based on population, severity, and time-to-deadline.
+- **Demand Queueing & Fulfillment:** Log supply requests for specific villages with calculated urgency scores. Mark demands as completed and remove them from the active queue dynamically.
 - **Deterministic Optimization Pipeline:** Generates comprehensive relief plans using a sequence of classical algorithms.
 - **Immutable Log Registry:** Keeps a history of generated manifests and plans for audit and review.
 
@@ -33,6 +34,11 @@ You need a Supabase project to enable real-time features and persistence.
 1. Create a project at [Supabase](https://supabase.com).
 2. Go to the SQL Editor in your Supabase dashboard.
 3. Open `supabase-schema.sql` (found in your workspace) and run the entire script. This will create the necessary tables, configure Row Level Security (RLS), enable Realtime, and insert seed data (nodes, edges, items, vehicles). *Note: The demands table starts empty by design.*
+4. **Important RLS Note:** Ensure your database policies allow authenticated users to perform operations. For example, to allow users to fulfill and delete demands, run:
+   ```sql
+   CREATE POLICY "Allow authenticated deletes on demands"
+   ON public.demands FOR DELETE TO authenticated USING (true);
+   ```
 
 ### 2. Environment Variables
 Create a `.env.local` file in the root of the frontend directory and add your Supabase credentials:

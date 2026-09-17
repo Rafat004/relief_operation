@@ -8,9 +8,10 @@ interface DemandsViewProps {
   nodes: Node[];
   items: Item[];
   onAddDemand: (demand: Demand) => void;
+  onDeleteDemand?: (id: string) => void;
 }
 
-export default function DemandsView({ demands, nodes, items, onAddDemand }: DemandsViewProps) {
+export default function DemandsView({ demands, nodes, items, onAddDemand, onDeleteDemand }: DemandsViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [formVillage, setFormVillage] = useState("");
   const [formItem, setFormItem] = useState("");
@@ -154,6 +155,7 @@ export default function DemandsView({ demands, nodes, items, onAddDemand }: Dema
               <th className="w-36 px-space-md text-right">Weight</th>
               <th className="w-28 px-space-md text-right">Urgency (0-1)</th>
               <th className="w-32 px-space-md text-center">Triage Status</th>
+              <th className="w-16 px-space-md text-center"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant font-body-md text-body-md">
@@ -193,6 +195,17 @@ export default function DemandsView({ demands, nodes, items, onAddDemand }: Dema
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono-code text-label-sm bg-primary-container/20 text-primary-container border border-primary-container/40">Pending</span>
                     ) : (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono-code text-label-sm bg-secondary-container/30 text-secondary border border-secondary/40">Planned</span>
+                    )}
+                  </td>
+                  <td className="px-space-md text-center">
+                    {onDeleteDemand && (
+                      <button
+                        onClick={() => onDeleteDemand(demand.id)}
+                        className="text-on-surface-variant hover:text-error transition-colors font-mono-code text-label-sm px-2 py-1 rounded hover:bg-error-container/20"
+                        title="Delete Demand"
+                      >
+                        ✕
+                      </button>
                     )}
                   </td>
                 </tr>
