@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  
+  /* ReliefRoute Specific Colors */
+  --color-surface: #111416;
+  --color-surface-dim: #111416;
+  --color-surface-bright: #373a3c;
+  --color-surface-container-lowest: #0c0f10;
+  --color-surface-container-low: #191c1e;
+  --color-surface-container: #1d2022;
+  --color-surface-container-high: #272a2c;
+  --color-surface-container-highest: #323537;
+  --color-on-surface: #e1e2e5;
+  --color-on-surface-variant: #d7c3ae;
+  --color-inverse-surface: #e1e2e5;
+  --color-inverse-on-surface: #2e3133;
+  --color-outline: #a08e7a;
+  --color-outline-variant: #524434;
+  --color-primary: #ffc170;
+  --color-on-primary: #462a00;
+  --color-primary-container: #f0a020;
+  --color-on-primary-container: #603c00;
+  --color-secondary: #78d3f0;
+  --color-on-secondary: #003542;
+  --color-tertiary: #6ce2a6;
+  --color-on-tertiary: #003822;
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  
+  /* ReliefRoute Specific Spacing */
+  --spacing-gutter: 1rem;
+  --spacing-gutter-sm: 0.5rem;
+  --spacing-margin: 1.5rem;
+  --spacing-margin-sm: 1rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2rem;
+
+  /* Typography configurations from stitch */
+  --font-headline-xl: 24px;
+  --font-headline-lg: 20px;
+  --font-headline-md: 16px;
+  --font-headline-sm: 14px;
+  --font-body-lg: 15px;
+  --font-body-md: 13px;
+  --font-body-sm: 12px;
+  --font-label-lg: 13px;
+  --font-label-md: 11px;
+  --font-label-sm: 10px;
+  --font-mono-metric-lg: 20px;
+  --font-mono-metric-md: 14px;
+  --font-mono-metric-sm: 12px;
+  --font-mono-code: 11px;
+
+  /* Shadcn standard variables mapping to our design */
+  --color-border: #323537; /* surface-container-highest */
+  --color-input: #0c0f10; /* surface-container-lowest */
+  --color-ring: #f0a020; /* primary-container */
+  --color-radius: 0.25rem;
+}
+
+:root, .dark {
+  /* Enforce dark mode as the only mode for ReliefRoute */
+  --background: #0c0f10; /* surface-container-lowest */
+  --foreground: #e1e2e5; /* on-surface */
+  --card: #171A1C;
+  --card-foreground: #e1e2e5;
+  --popover: #1d2022;
+  --popover-foreground: #e1e2e5;
+  --primary: #f0a020;
+  --primary-foreground: #0e1113;
+  --secondary: transparent;
+  --secondary-foreground: #e1e2e5;
+  --muted: #323537;
+  --muted-foreground: #a8a49b;
+  --accent: #1F2325;
+  --accent-foreground: #f2efe9;
+  --destructive: #e2453c;
+  --destructive-foreground: #f2efe9;
+  --border: #2a2f31;
+  --input: #0e1113;
+  --ring: #f0a020;
+  --radius: 0.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-surface-container-lowest text-on-surface font-sans;
+    overscroll-behavior: none;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}

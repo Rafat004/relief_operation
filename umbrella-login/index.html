@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aesthetic Umbrella Login</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="rain"></div>
+
+  <div class="scene" id="scene">
+    
+    <!-- Left Side: Umbrella -->
+    <div class="left-panel">
+      <div class="umbrella" id="umbrella">
+        
+        <!-- The Canopy Structure -->
+        <div class="canopy"></div>
+        
+        <!-- The Shaft Structure -->
+        <div class="shaft">
+          <!-- Interactive Pull Switch -->
+          <div class="runner-wrapper" id="switch">
+            <div class="runner"></div>
+            <p class="pull-text">PULL DOWN</p>
+          </div>
+        </div>
+        
+        <!-- The Handle -->
+        <div class="handle"></div>
+        
+      </div>
+    </div>
+
+    <!-- Right Side: Forms -->
+    <div class="right-panel">
+      <div class="form-container">
+        
+        <!-- Login Form -->
+        <div class="form-box login-box active">
+          <h2>Welcome Back</h2>
+          <form id="login-form">
+            <div class="input-group">
+              <input type="text" required placeholder="Username">
+            </div>
+            <div class="input-group">
+              <input type="password" required placeholder="Password">
+            </div>
+            <button type="submit" class="submit-btn">Login</button>
+            <p class="toggle-text">Don't have an account? <span id="to-signup">Sign up</span></p>
+          </form>
+        </div>
+        
+        <!-- Sign Up Form -->
+        <div class="form-box signup-box">
+          <h2>Create Account</h2>
+          <form id="signup-form">
+            <div class="input-group">
+              <input type="text" required placeholder="Username">
+            </div>
+            <div class="input-group">
+              <input type="email" required placeholder="Email">
+            </div>
+            <div class="input-group">
+              <input type="password" required placeholder="Password">
+            </div>
+            <button type="submit" class="submit-btn">Sign Up</button>
+            <p class="toggle-text">Already have an account? <span id="to-login">Login</span></p>
+          </form>
+        </div>
+        
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
